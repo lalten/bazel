@@ -306,32 +306,37 @@ public abstract class RepositoryFunction {
   protected Map<String, String> declareEnvironmentDependencies(
       Map<String, String> markerData, Environment env, Iterable<String> keys)
       throws InterruptedException {
-    Map<String, String> environ = ActionEnvironmentFunction.getEnvironmentView(env, keys);
+    Map<String, String> envDep = getEnvVarValues(env, keys);
+    if (envDep == null) {
+      return null;
+    }
+    // Add the dependencies to the marker file
+    for (Map.Entry<String, String> value : envDep.entrySet()) {
+      markerData.put("ENV:" + value.getKey(), value.getValue());
+    }
+    return envDep;
+  }
 
-    // Returns true if there is a null value and we need to wait for some dependencies.
+  @Nullable
+  public static Map<String, String> getEnvVarValues(Environment env, Iterable<String> keys)
+      throws InterruptedException {
+    Map<String, String> environ = ActionEnvironmentFunction.getEnvironmentView(env, keys);
     if (environ == null) {
       return null;
     }
-
     Map<String, String> repoEnvOverride = PrecomputedValue.REPO_ENV.get(env);
     if (repoEnvOverride == null) {
       return null;
     }
 
     // Only depend on --repo_env values that are specified in the "environ" attribute.
-    Map<String, String> repoEnv = new LinkedHashMap<String, String>(environ);
+    Map<String, String> repoEnv = new LinkedHashMap<>(environ);
     for (String key : keys) {
       String value = repoEnvOverride.get(key);
       if (value != null) {
         repoEnv.put(key, value);
       }
     }
-
-    // Add the dependencies to the marker file
-    for (Map.Entry<String, String> value : repoEnv.entrySet()) {
-      markerData.put("ENV:" + value.getKey(), value.getValue());
-    }
-
     return repoEnv;
   }
 
@@ -457,8 +462,7 @@ public abstract class RepositoryFunction {
   }
 
   @VisibleForTesting
-  protected static PathFragment getTargetPath(String userDefinedPath, Path workspace)
-      throws RepositoryFunctionException {
+  protected static PathFragment getTargetPath(String userDefinedPath, Path workspace) {
     PathFragment pathFragment = PathFragment.create(userDefinedPath);
     return workspace.getRelative(pathFragment).asFragment();
   }
