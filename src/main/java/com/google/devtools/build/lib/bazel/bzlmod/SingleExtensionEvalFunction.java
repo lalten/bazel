@@ -146,8 +146,8 @@ public class SingleExtensionEvalFunction implements SkyFunction {
     }
 
     ModuleExtension extension = (ModuleExtension) exported;
-    ImmutableMap<String, String> extensionEnvVars =
-        ImmutableMap.copyOf(RepositoryFunction.getEnvVarValues(env, extension.getEnvVariables()));
+    Map<String, String> extensionEnvVars =
+        RepositoryFunction.getEnvVarValues(env, extension.getEnvVariables());
     if (extensionEnvVars == null) {
       return null;
     }
@@ -164,7 +164,7 @@ public class SingleExtensionEvalFunction implements SkyFunction {
       SingleExtensionEvalValue singleExtensionEvalValue =
           tryGettingValueFromLockFile(
               extensionId,
-              extensionEnvVars,
+              ImmutableMap.copyOf(extensionEnvVars),
               usagesValue,
               bzlTransitiveDigest,
               lockfileMode,
@@ -190,7 +190,7 @@ public class SingleExtensionEvalFunction implements SkyFunction {
               ModuleExtensionResolutionEvent.create(
                   extensionId,
                   LockFileModuleExtension.create(
-                      bzlTransitiveDigest, extensionEnvVars, generatedRepoSpecs)));
+                      bzlTransitiveDigest, ImmutableMap.copyOf(extensionEnvVars), generatedRepoSpecs)));
     }
     return createSingleExtentionValue(generatedRepoSpecs, usagesValue);
   }
