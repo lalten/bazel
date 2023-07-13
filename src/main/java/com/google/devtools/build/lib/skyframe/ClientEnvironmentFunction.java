@@ -65,7 +65,7 @@ public final class ClientEnvironmentFunction implements SkyFunction {
 
   @Nullable
   @Override
-  public SkyValue compute(SkyKey key, Environment env) {
+  public SkyValue compute(SkyKey key, Environment env) throws InterruptedException{
     return new ClientEnvironmentValue(clientEnv.get().get((String) key.argument()));
   }
 }

@@ -48,6 +48,8 @@ import com.google.devtools.build.lib.packages.WorkspaceFactoryHelper;
 import com.google.devtools.build.lib.packages.semantics.BuildLanguageOptions;
 import com.google.devtools.build.lib.starlarkbuildapi.repository.RepositoryModuleApi;
 import java.util.Map;
+import java.util.Optional;
+import javax.annotation.Nullable;
 import net.starlark.java.annot.StarlarkBuiltin;
 import net.starlark.java.eval.Dict;
 import net.starlark.java.eval.EvalException;
@@ -113,7 +115,8 @@ public class StarlarkRepositoryModule implements RepositoryModuleApi {
     builder.setRuleDefinitionEnvironmentLabelAndDigest(
         bzlModule.label(), bzlModule.bzlTransitiveDigest());
     builder.setWorkspaceOnly();
-    return new RepositoryRuleFunction(builder, implementation);
+    return new RepositoryRuleFunction(
+        builder, implementation, Starlark.toJavaOptional(doc, String.class));
   }
 
   /**
@@ -131,17 +134,39 @@ public class StarlarkRepositoryModule implements RepositoryModuleApi {
       implements StarlarkCallable, StarlarkExportable, RuleFunction {
     private final RuleClass.Builder builder;
     private final StarlarkCallable implementation;
-    private Label extensionLabel;
-    private String exportedName;
+    private final Optional<String> documentation;
+    @Nullable private Label extensionLabel;
+    @Nullable private String exportedName;
 
-    private RepositoryRuleFunction(RuleClass.Builder builder, StarlarkCallable implementation) {
+    private RepositoryRuleFunction(
+        RuleClass.Builder builder,
+        StarlarkCallable implementation,
+        Optional<String> documentation) {
       this.builder = builder;
       this.implementation = implementation;
+      this.documentation = documentation;
     }
 
     @Override
     public String getName() {
       return "repository_rule";
+    }
+
+    /**
+     * Returns the value of the doc parameter passed to {@code repository_rule()} in Starlark, or an
+     * empty Optional if a doc string was not provided.
+     */
+    public Optional<String> getDocumentation() {
+      return documentation;
+    }
+
+    /**
+     * Returns the label of the .bzl module where {@code repository_rule()} was called, or null if
+     * the rule has not been exported yet.
+     */
+    @Nullable
+    public Label getExtensionLabel() {
+      return extensionLabel;
     }
 
     @Override
@@ -274,9 +299,9 @@ public class StarlarkRepositoryModule implements RepositoryModuleApi {
         .setTagClasses(
             ImmutableMap.copyOf(Dict.cast(tagClasses, String.class, TagClass.class, "tag_classes")))
         .setDoc(Starlark.toJavaOptional(doc, String.class))
-        .setEnvVariables(ImmutableList.copyOf(Sequence.cast(environ, String.class, "environ")))
         .setDefiningBzlFileLabel(
             BzlInitThreadContext.fromOrFailFunction(thread, "module_extension").getBzlFile())
+        .setEnvVariables(ImmutableList.copyOf(Sequence.cast(environ, String.class, "environ")))
         .setLocation(thread.getCallerLocation())
         .build();
   }
